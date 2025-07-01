@@ -16,6 +16,7 @@
 enum Algorithm {
     None,
     Dijkstra,
+    BFS,
     AStar
 };
 
@@ -47,6 +48,48 @@ class PathFindingManager {
     };
 
     void dijkstra(Graph &graph) {
+        std::unordered_map<Node*, double> dist;
+        std::unordered_map<Node*, Node*> parent;
+        std::set<std::pair<double, Node*>> pq;
+
+        // Inicializar todas las distancias a infinito
+        for (auto &[_, node] : graph.nodes) {
+            dist[node] = std::numeric_limits<double>::infinity();
+        }
+
+        dist[src] = 0.0;
+        pq.insert({0.0, src});
+
+        while (!pq.empty()) {
+            auto [curr_dist, current] = *pq.begin();
+            pq.erase(pq.begin());
+
+            if (current == dest) break;
+
+            for (Edge *edge : current->edges) {
+                Node* neighbor = (edge->src == current) ? edge->dest : edge->src;
+                double weight = edge->length;
+
+                if (dist[current] + weight < dist[neighbor]) {
+                    // Si ya está en el set, lo eliminamos para actualizar
+                    auto it = pq.find({dist[neighbor], neighbor});
+                    if (it != pq.end()) pq.erase(it);
+
+                    dist[neighbor] = dist[current] + weight;
+                    parent[neighbor] = current;
+                    pq.insert({dist[neighbor], neighbor});
+
+                    // Agregar línea de arista visitada para la animación
+                    visited_edges.emplace_back(current->coord, neighbor->coord, sf::Color(100, 100, 255), 0.6f);
+                    render();
+                }
+            }
+        }
+        set_final_path(parent);
+    }
+
+
+    void bfs(Graph &graph) {
         std::unordered_map<Node *, Node *> parent;
         // TODO: Add your code here
 
@@ -60,12 +103,33 @@ class PathFindingManager {
         set_final_path(parent);
     }
 
-    //* --- render ---
-    // En cada iteración de los algoritmos esta función es llamada para dibujar los cambios en el 'window_manager'
     void render() {
-        sf::sleep(sf::milliseconds(10));
-        // TODO: Add your code here
+        sf::sleep(sf::milliseconds(10)); // pequeña pausa para visualizar
+
+        window_manager->clear();          // limpia la ventana
+        window_manager->get_window().setFramerateLimit(60);
+
+        // Dibuja todo el grafo
+        // Importante: asegurarse de que todavía tienes acceso al grafo en esta función
+        // Como no lo tienes directamente, lo ideal sería pasar el grafo como parámetro. Pero si no quieres cambiar la firma, esto es opcional.
+
+        // Dibuja aristas visitadas (hasta ahora)
+        for (sfLine &line : visited_edges) {
+            line.draw(window_manager->get_window(), sf::RenderStates::Default);
+        }
+
+        // Dibuja el nodo fuente y destino si existen
+        if (src != nullptr) {
+            src->draw(window_manager->get_window());
+        }
+        if (dest != nullptr) {
+            dest->draw(window_manager->get_window());
+        }
+
+        // Muestra el frame
+        window_manager->display();
     }
+
 
     //* --- set_final_path ---
     // Esta función se usa para asignarle un valor a 'this->path' al final de la simulación del algoritmo.
@@ -83,10 +147,16 @@ class PathFindingManager {
     // Este path será utilizado para hacer el 'draw()' del 'path' entre 'src' y 'dest'.
     //*
     void set_final_path(std::unordered_map<Node *, Node *> &parent) {
+        path.clear();
         Node* current = dest;
 
-        // TODO: Add your code here
+        while (parent.find(current) != parent.end()) {
+            Node* prev = parent[current];
+            path.emplace_back(current->coord, prev->coord, sf::Color::White, 2.0f);
+            current = prev;
+        }
     }
+
 
 public:
     Node *src = nullptr;
@@ -95,12 +165,22 @@ public:
     explicit PathFindingManager(WindowManager *window_manager) : window_manager(window_manager) {}
 
     void exec(Graph &graph, Algorithm algorithm) {
-        if (src == nullptr || dest == nullptr) {
-            return;
-        }
+        if (src == nullptr || dest == nullptr) return;
 
-        // TODO: Add your code here
+        switch (algorithm) {
+            case Dijkstra:
+                dijkstra(graph);
+            case BFS:
+                bfs(graph);
+                break;
+            case AStar:
+                a_star(graph);
+                break;
+            default:
+                break;
+        }
     }
+
 
     void reset() {
         path.clear();

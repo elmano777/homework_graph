@@ -79,6 +79,10 @@ public:
                                 path_finding_manager.exec(graph, Dijkstra);
                                 break;
                             }
+                            case sf::Keyboard::B: {
+                                path_finding_manager.exec(graph, BFS);
+                                break;
+                            }
                             // A = Ejecutar AStar
                             case sf::Keyboard::A: {
                                 path_finding_manager.exec(graph, AStar);
