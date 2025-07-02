@@ -9,8 +9,10 @@
 #include "window_manager.h"
 #include "path_finding_manager.h"
 
+
 #include <cmath>
 #include <functional>
+#include <iostream>
 
 
 class GUI {
@@ -52,7 +54,9 @@ public:
         window_manager.get_window().setFramerateLimit(200);
     }
 
+
     void main_loop() {
+        std::cout << "Entrando a main loop" << std::endl;
         bool draw_extra_lines = false;
 
         // Corre la GUI siempre y cuando la ventana esté abierta

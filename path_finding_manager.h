@@ -47,12 +47,19 @@ class PathFindingManager {
         }
     };
 
+    double heuristic(Node* a, Node* b) {
+        float dx = a->coord.x - b->coord.x;
+        float dy = a->coord.y - b->coord.y;
+        return std::sqrt(dx * dx + dy * dy);
+    }
+
+
     void dijkstra(Graph &graph) {
         std::unordered_map<Node*, double> dist;
         std::unordered_map<Node*, Node*> parent;
         std::set<std::pair<double, Node*>> pq;
 
-        // Inicializar todas las distancias a infinito
+        // Inicializar distancias
         for (auto &[_, node] : graph.nodes) {
             dist[node] = std::numeric_limits<double>::infinity();
         }
@@ -71,20 +78,17 @@ class PathFindingManager {
                 double weight = edge->length;
 
                 if (dist[current] + weight < dist[neighbor]) {
-                    // Si ya está en el set, lo eliminamos para actualizar
-                    auto it = pq.find({dist[neighbor], neighbor});
-                    if (it != pq.end()) pq.erase(it);
-
+                    pq.erase({dist[neighbor], neighbor}); // actualiza si ya estaba
                     dist[neighbor] = dist[current] + weight;
                     parent[neighbor] = current;
                     pq.insert({dist[neighbor], neighbor});
 
-                    // Agregar línea de arista visitada para la animación
                     visited_edges.emplace_back(current->coord, neighbor->coord, sf::Color(100, 100, 255), 0.6f);
                     render();
                 }
             }
         }
+
         set_final_path(parent);
     }
 
@@ -97,11 +101,47 @@ class PathFindingManager {
     }
 
     void a_star(Graph &graph) {
-        std::unordered_map<Node *, Node *> parent;
-        // TODO: Add your code here
+        std::unordered_map<Node*, double> g_score;
+        std::unordered_map<Node*, double> f_score;
+        std::unordered_map<Node*, Node*> parent;
+        std::set<std::pair<double, Node*>> open_set;
+
+        for (auto &[_, node] : graph.nodes) {
+            g_score[node] = std::numeric_limits<double>::infinity();
+            f_score[node] = std::numeric_limits<double>::infinity();
+        }
+
+        g_score[src] = 0.0;
+        f_score[src] = heuristic(src, dest);
+        open_set.insert({f_score[src], src});
+
+        while (!open_set.empty()) {
+            auto [curr_f, current] = *open_set.begin();
+            open_set.erase(open_set.begin());
+
+            if (current == dest) break;
+
+            for (Edge *edge : current->edges) {
+                Node *neighbor = (edge->src == current) ? edge->dest : edge->src;
+                double tentative_g = g_score[current] + edge->length;
+
+                if (tentative_g < g_score[neighbor]) {
+                    open_set.erase({f_score[neighbor], neighbor}); // actualiza si ya estaba
+
+                    parent[neighbor] = current;
+                    g_score[neighbor] = tentative_g;
+                    f_score[neighbor] = tentative_g + heuristic(neighbor, dest);
+                    open_set.insert({f_score[neighbor], neighbor});
+
+                    visited_edges.emplace_back(current->coord, neighbor->coord, sf::Color(255, 100, 100), 0.6f);
+                    render();
+                }
+            }
+        }
 
         set_final_path(parent);
     }
+
 
     void render() {
         sf::sleep(sf::milliseconds(10)); // pequeña pausa para visualizar
@@ -170,6 +210,7 @@ public:
         switch (algorithm) {
             case Dijkstra:
                 dijkstra(graph);
+                break;
             case BFS:
                 bfs(graph);
                 break;
@@ -180,6 +221,7 @@ public:
                 break;
         }
     }
+
 
 
     void reset() {
